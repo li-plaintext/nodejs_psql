@@ -1,5 +1,5 @@
 # node_psql
-*node_psql is for exploring postgres database purpose.*
+*node_psql is built by using pure socket based on [https://www.postgresql.org/docs/8.2/static/protocol-message-formats.html](https://www.postgresql.org/docs/8.2/static/protocol-message-formats.html)*
 
 > **Note**: node_psql is for exploring postgres database purpose
 
