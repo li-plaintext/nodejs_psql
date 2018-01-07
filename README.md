@@ -3,9 +3,9 @@
 
 > **Note**: node_psql is for exploring postgres database purpose
 
-<img src="https://img.shields.io/travis/USER/REPO.svg"/>
-<img src="https://img.shields.io/npm/v/npm.svg" />
-
+<span><img src="https://img.shields.io/travis/USER/REPO.svg"/><span>
+<span><img src="https://img.shields.io/npm/v/npm.svg" /><span>
+<span><img src="https://badges.gitter.im/Join%20Chat.svg" /><span>
 
 ### INSTANTIATE
 
