@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/npm/v/npm.svg" />
 
 
-### instantiate
+### INSTANTIATE
 
 ```javascript
 var Psql = new Psql({
@@ -20,7 +20,7 @@ var Psql = new Psql({
 
 ### CRUD EXAMPLE
 
-```javascript
+```sql
 Psql.query(`SELECT * FROM photo;`);
 
 Psql.query(`INSERT INTO photo (name, description, filename, views, age) VALUES ('new', 'description', 'filename', 1, 2);`);
@@ -32,8 +32,10 @@ Psql.query(`DELETE FROM photo WHERE name='new';`);
 
 ### TRANSACTION EXAMPLE
 
-```javascript
-BEGIN;
-  select * from photo;
-COMMIT;
+```js
+Psql.query(`
+  BEGIN;
+    select * from photo;
+  COMMIT;`
+);
 ```
