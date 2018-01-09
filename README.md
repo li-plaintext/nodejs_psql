@@ -18,7 +18,7 @@ var Psql = new Psql({
 });
 ```
 
-### CRUD EXAMPLE
+### CRUD example
 
 ```sql
 Psql.query(`SELECT * FROM photo;`);
@@ -30,7 +30,17 @@ Psql.query(`UPDATE photo SET description='xxx' WHERE name='new';`);
 Psql.query(`DELETE FROM photo WHERE name='new';`);
 ```
 
-### TRANSACTION EXAMPLE
+### function example
+
+```sql
+Psql.query(`CREATE FUNCTION query_all() RETURNS SETOF photo AS $$ SELECT * FROM photo $$ LANGUAGE SQL;`);
+
+Psql.query(`select query_all()`);
+
+Psql.query(`DROP FUNCTION query_all()`);
+```
+
+### transaction example
 
 ```js
 Psql.query(`
