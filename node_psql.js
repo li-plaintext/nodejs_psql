@@ -78,6 +78,9 @@ var Psql = function(config = {}) {
       self.offset = 0;
     });
 
+    this.stream.on('error', function(error){
+      console.log(error.toString());
+    });
   };
 
   this.startupMessage = function (config) {
@@ -285,9 +288,14 @@ var Psql = function(config = {}) {
     this.stream.write(this.queries.shift());
   };
 
-  this.close = function() {
-    var terminationBuffer = new Buffer([88,0,0,0,4]);
-    this.stream.write(terminationBuffer);
+  this.terminate = function() {
+    /**
+      terminate Message
+      -------------------
+      | 'X' | int32 len |
+      -------------------
+    */
+    this.stream.write(new Buffer([88,0,0,0,4]));
   };
 
 };
