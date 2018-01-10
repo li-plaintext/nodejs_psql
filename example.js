@@ -15,11 +15,11 @@ Psql.connect();
 // Psql.query(`DELETE FROM photo WHERE name='new';`);
 
 // Transaction exmaple
-Psql.query(`
-  BEGIN;
-    select * from photo;
-  COMMIT;
-`);
+// Psql.query(`
+//   BEGIN;
+//     select * from photo;
+//   COMMIT;
+// `);
 
 
 // Function call
@@ -28,4 +28,4 @@ Psql.query(`
 // Psql.query(`DROP FUNCTION query_all()`);
 
 
-// Psql.terminate();
+Psql.extQuery(`SELECT * FROM photo`);

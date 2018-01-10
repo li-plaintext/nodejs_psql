@@ -1,19 +1,30 @@
 var net = require('net');
 
+const NAMING = {
+  // request
+  'send->Q': 'simple query',
+  'send->X': 'terminate',
+  'send->P': 'parse',
+  'send->B': 'bind',
+  'send->E': 'exection',
+  'send->S': 'sync',
 
-/*
-  'R' -> AuthenticationOk
-  'S' -> ParameterStatus
-  'K' -> BackendKeyData
-  'Z' -> ReadyForQuery
-  'T' -> RowDescription
-  'D' -> DataRow
-  'C' -> CommandComplete
-  'E' -> Error
+  // response
+  'R': 'AuthenticationOk',
+  'S': 'ParameterStatus',
+  'K': 'BackendKeyData',
+  'Z': 'ReadyForQuery',
+  'T': 'RowDescription',
+  'D': 'DataRow',
+  'C': 'CommandComplete',
+  'E': 'Error',
+  'N': 'Notice',
+  '1': 'ParseComplete',
+  '2': 'BindComplete',
+  'A': 'Notification'
+};
 
-  'Q' for query message
-  'X' for ???
- */
+
 
 var Psql = function(config = {}) {
   this.config = config;
@@ -36,7 +47,8 @@ var Psql = function(config = {}) {
 
     this.stream.on('data', function(buffer) {
       while(self.offset < buffer.length){
-        console.log("curent identifier: ", String.fromCharCode(buffer[self.offset]));
+        let identifier = String.fromCharCode(buffer[self.offset]);
+        console.log("curent identifier: " + identifier, NAMING[identifier]);
         switch(String.fromCharCode(buffer[self.offset])) {
           case 'R' :
             self.ParseAuthenticationOk(buffer);
@@ -63,6 +75,12 @@ var Psql = function(config = {}) {
             break;
           case 'E' :
             console.log(self.ErrorResponse(buffer));
+            break;
+          case '1' :
+            console.log(self.parseComplete(buffer));
+            break;
+          case '2' :
+            console.log(self.bindComplete(buffer));
             break;
           default:
             self.offset = buffer.length;
@@ -104,10 +122,6 @@ var Psql = function(config = {}) {
 
      return resBuffer;
   };
-
-  this.parse = function(data) {
-
-  }
 
   this.readChar = function(data) {
     return data[this.offset++];
@@ -297,6 +311,170 @@ var Psql = function(config = {}) {
     */
     this.stream.write(new Buffer([88,0,0,0,4]));
   };
+
+  this.extQuery = function(text) {
+    this.parseMessage(text);
+    // this.syncMessage();
+  }
+
+  this.parseMessage = function(text) {
+    /**
+      parse Message
+      ------------------------------------------------------------------------------------------------
+      | 'P' | int32 len | str statement | str query | int16 lenOfDataTypes | ... int32 data type ... |
+      ------------------------------------------------------------------------------------------------
+    */
+    let identifierBuffer = Buffer([0x50]);
+    let statementBuffer = Buffer.from('queryName' + '\0', 'utf8');
+    let queryBuffer = Buffer.from(text + '\0', 'utf8');
+    let parameterDataTypesLenBuffer = Buffer([0,0]);
+
+
+    let length = statementBuffer.length + queryBuffer.length + parameterDataTypesLenBuffer.length;
+    let lengthBuffer = Buffer(4);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+
+        console.log( identifierBuffer[0]);
+        console.log( statementBuffer.length);
+        console.log(queryBuffer.length);
+        console.log(parameterDataTypesLenBuffer.length);
+        console.log(lengthBuffer.length);
+        console.log(length);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, statementBuffer, queryBuffer, parameterDataTypesLenBuffer]);
+
+    console.log(resBuffer.length);
+
+    this.queries.push(resBuffer);
+  }
+
+  this.parseComplete = function(data) {
+    /**
+      parseComplete Message
+      -------------------
+      | '1' | int32 len |
+      -------------------
+    */
+
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+
+    return {identifier};
+
+  }
+
+  this.bindMessage = function(values) {
+    /**
+      bind Message
+      ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+      | 'B' | int32 len | str portal | str statement | int16 param format (1 or 0) | int16 numOfvalues | ... | int32 len | Byten value | ... | int16 result format (1 or 0) |
+      ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+    */
+    let identifierBuffer = Buffer([0x11]);
+    let portalBuffer = Buffer(['\0']);
+    let statementBuffer = Buffer(['\0']);
+    let parameterFormatBuffer = Buffer([0,0]);
+    let resultFormatBuffer = Buffer([0,0]);
+
+    let valueBufferArr = values.map((value)=> {
+      let convertedValue = String(value === null ? value : -1);
+      let length = 4 + convertedValue.length;
+      let valueBuffer = Buffer(4 + length);
+      valueBuffer.writeUInt32BE(length, 0);
+      valueBuffer.writeUIntBE(convertedValue, 4);
+
+      return valueBuffer;
+    })
+
+    let valueBufferInOne = Buffer.concat(valueBufferArr);
+
+
+    let numOfvalueBuffer = Buffer(4 + value.length);
+    numOfvalueBuffer.writeUInt32BE(value.length, 0);
+
+    let length = portalBuffer.length + statementBuffer.length + valueBufferInOne.length + parameterFormatBuffer.length + resultFormatBuffer.length;
+    let lengthBuffer = Buffer(4 + length);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, portalBuffer, statementBuffer, parameterFormatBuffer, numOfvalueBuffer, valueBufferInOne, resultFormatBuffer]);
+
+    this.stream.write(resBuffer);
+  }
+
+  this.bindComplete = function(data) {
+    /**
+      bindComplete Message
+      -------------------
+      | '2' | int32 len |
+      -------------------
+    */
+
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+
+    return {identifier};
+  }
+
+  this.describeMessage = function() {
+    /**
+      describeMessage Message
+      -------------------------------------------------------
+      | 'D' | int32 len | 'S'or'P'| str statement or portal |
+      -------------------------------------------------------
+    */
+
+    let identifierBuffer = Buffer([0x44]);
+    let indicatorBuffer = Buffer.from('S', 'utf8');
+
+    let length = indicatorBuffer.length;
+    let lengthBuffer = Buffer(4 + length);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, indicatorBuffer]);
+
+    this.stream.write(resBuffer);
+  }
+
+  this.executeMessage = function() {
+    /**
+      executeMessage
+      -------------------------------------------------------
+      | 'E' | int32 len | 'S'or'P'| str statement or portal |
+      -------------------------------------------------------
+    */
+
+    let identifierBuffer = Buffer([0x44]);
+    let indicatorBuffer = Buffer.from('\0', 'utf8');
+    let numberOfRowsBuffer = Buffer([0,0,0,0]);
+
+    let length = indicatorBuffer.length + numberOfRowsBuffer.length;
+    let lengthBuffer = Buffer(4 + length);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, indicatorBuffer, numberOfRowsBuffer]);
+
+    this.stream.write(resBuffer);
+  }
+
+  this.syncMessage = function() {
+    /**
+      syncMessage
+      -------------------
+      | 'S' | int32 len |
+      -------------------
+    */
+
+    let identifierBuffer = Buffer([0x53]);
+
+    let length = 0;
+    let lengthBuffer = Buffer(4 + length);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer]);
+
+    this.queries.push(resBuffer);
+  }
 
 };
 
