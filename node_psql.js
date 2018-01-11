@@ -33,6 +33,7 @@ var Psql = function(config = {}) {
   this.queries = [];
   this.stream = new net.Stream();
   this.offset = 0;
+  this.isEmpty = false;
 
   this.connect = function() {
     if(this.stream.readyState == 'closed'){
@@ -299,7 +300,14 @@ var Psql = function(config = {}) {
 
   this.execQuery = function() {
     if (this.queries.length <= 0) return;
-    this.stream.write(this.queries.shift());
+
+    if(this.isEmpty) { // <= send rest of buffer in array
+      while(this.queries.length >0) this.stream.write(this.queries.shift());
+    } else {
+      this.stream.write(this.queries.shift());
+
+    }
+
   };
 
   this.terminate = function() {
@@ -314,7 +322,11 @@ var Psql = function(config = {}) {
 
   this.extQuery = function(text) {
     this.parseMessage(text);
-    // this.syncMessage();
+    this.bindMessage();
+    this.executeMessage();
+    this.syncMessage();
+
+    this.isEmpty = true;
   }
 
   this.parseMessage = function(text) {
@@ -325,26 +337,18 @@ var Psql = function(config = {}) {
       ------------------------------------------------------------------------------------------------
     */
     let identifierBuffer = Buffer([0x50]);
-    let statementBuffer = Buffer.from('queryName' + '\0', 'utf8');
+    let statementBuffer = Buffer.from('\0', 'utf8');
     let queryBuffer = Buffer.from(text + '\0', 'utf8');
     let parameterDataTypesLenBuffer = Buffer([0,0]);
 
 
-    let length = statementBuffer.length + queryBuffer.length + parameterDataTypesLenBuffer.length;
+    let length = 4 + statementBuffer.length + queryBuffer.length + parameterDataTypesLenBuffer.length;
     let lengthBuffer = Buffer(4);
     lengthBuffer.writeUInt32BE(length, 0);
 
-
-        console.log( identifierBuffer[0]);
-        console.log( statementBuffer.length);
-        console.log(queryBuffer.length);
-        console.log(parameterDataTypesLenBuffer.length);
-        console.log(lengthBuffer.length);
-        console.log(length);
-
     let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, statementBuffer, queryBuffer, parameterDataTypesLenBuffer]);
 
-    console.log(resBuffer.length);
+    console.log('P', resBuffer);
 
     this.queries.push(resBuffer);
   }
@@ -364,16 +368,16 @@ var Psql = function(config = {}) {
 
   }
 
-  this.bindMessage = function(values) {
+  this.bindMessage = function(values = []) {
     /**
       bind Message
       ----------------------------------------------------------------------------------------------------------------------------------------------------------------
       | 'B' | int32 len | str portal | str statement | int16 param format (1 or 0) | int16 numOfvalues | ... | int32 len | Byten value | ... | int16 result format (1 or 0) |
       ----------------------------------------------------------------------------------------------------------------------------------------------------------------
     */
-    let identifierBuffer = Buffer([0x11]);
-    let portalBuffer = Buffer(['\0']);
-    let statementBuffer = Buffer(['\0']);
+    let identifierBuffer = Buffer([0x42]);
+    let portalBuffer = Buffer(0);
+    let statementBuffer = Buffer(0);
     let parameterFormatBuffer = Buffer([0,0]);
     let resultFormatBuffer = Buffer([0,0]);
 
@@ -390,16 +394,18 @@ var Psql = function(config = {}) {
     let valueBufferInOne = Buffer.concat(valueBufferArr);
 
 
-    let numOfvalueBuffer = Buffer(4 + value.length);
-    numOfvalueBuffer.writeUInt32BE(value.length, 0);
+    let numOfvalueBuffer = Buffer(4 + values.length);
+    numOfvalueBuffer.writeUInt32BE(values.length, 0);
 
-    let length = portalBuffer.length + statementBuffer.length + valueBufferInOne.length + parameterFormatBuffer.length + resultFormatBuffer.length;
-    let lengthBuffer = Buffer(4 + length);
+    let length = 4 + portalBuffer.length + statementBuffer.length + valueBufferInOne.length + parameterFormatBuffer.length + numOfvalueBuffer.length + resultFormatBuffer.length;
+    let lengthBuffer = Buffer(4);
     lengthBuffer.writeUInt32BE(length, 0);
 
     let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, portalBuffer, statementBuffer, parameterFormatBuffer, numOfvalueBuffer, valueBufferInOne, resultFormatBuffer]);
 
-    this.stream.write(resBuffer);
+
+    console.log('B', resBuffer);
+    this.queries.push(resBuffer);
   }
 
   this.bindComplete = function(data) {
@@ -439,22 +445,23 @@ var Psql = function(config = {}) {
   this.executeMessage = function() {
     /**
       executeMessage
-      -------------------------------------------------------
-      | 'E' | int32 len | 'S'or'P'| str statement or portal |
-      -------------------------------------------------------
+      -----------------------------------------------------------
+      | 'E' | int32 len | str statement or portal | Int32 rows  |
+      -----------------------------------------------------------
     */
 
-    let identifierBuffer = Buffer([0x44]);
+    let identifierBuffer = Buffer([0x45]);
     let indicatorBuffer = Buffer.from('\0', 'utf8');
     let numberOfRowsBuffer = Buffer([0,0,0,0]);
 
-    let length = indicatorBuffer.length + numberOfRowsBuffer.length;
-    let lengthBuffer = Buffer(4 + length);
+    let length = 4 + indicatorBuffer.length + numberOfRowsBuffer.length;
+    let lengthBuffer = Buffer(4);
     lengthBuffer.writeUInt32BE(length, 0);
 
     let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, indicatorBuffer, numberOfRowsBuffer]);
 
-    this.stream.write(resBuffer);
+    console.log('E', resBuffer);
+    this.queries.push(resBuffer);
   }
 
   this.syncMessage = function() {
@@ -467,11 +474,13 @@ var Psql = function(config = {}) {
 
     let identifierBuffer = Buffer([0x53]);
 
-    let length = 0;
-    let lengthBuffer = Buffer(4 + length);
+    let length = 4 + 0;
+    let lengthBuffer = Buffer(4);
     lengthBuffer.writeUInt32BE(length, 0);
 
     let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer]);
+
+    console.log('S', resBuffer);
 
     this.queries.push(resBuffer);
   }
