@@ -58,6 +58,7 @@ var Psql = function(config = {}) {
             self.ParseparameterStatus(buffer);
             break;
           case 'Z' :
+            self.queries.length <= 0 && self.terminate();
             self.ReadyForQuery(buffer);
             self.execQuery();
             break;
