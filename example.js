@@ -28,4 +28,7 @@ Psql.connect();
 // Psql.query(`DROP FUNCTION query_all()`);
 
 
-Psql.extQuery(`SELECT * FROM photo`);
+// Psql.extQuery(`SELECT * FROM photo`);
+
+
+Psql.copyFrom(`copy photo FROM STDIN `);

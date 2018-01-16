@@ -21,7 +21,11 @@ const NAMING = {
   'N': 'Notice',
   '1': 'ParseComplete',
   '2': 'BindComplete',
-  'A': 'Notification'
+  'A': 'Notification',
+  'G': 'CopyInResponse',
+  'H': 'CopyOutResponse',
+  'c': 'CopyDone',
+  'd': 'CopyData',
 };
 
 
@@ -74,6 +78,20 @@ var Psql = function(config = {}) {
             break;
           case 'C' :
             self.CommandComplete(buffer);
+            break;
+          case 'G' :
+            console.log(self.CopyInResponse(buffer));
+            console.log(self.queries.length);
+            self.execQuery();
+            break;
+          case 'H' :
+            console.log(self.CopyOutResponse(buffer));
+            break;
+          case 'd' :
+            console.log(self.receiveCopyData(buffer));
+            break;
+          case 'c' :
+            self.receiveCopyDone(buffer);
             break;
           case 'E' :
             console.log(self.ErrorResponse(buffer));
@@ -140,11 +158,25 @@ var Psql = function(config = {}) {
     this.offset += 2;
     return int16;
   }
+  this.readInt8 = function(data) {
+    let int8 = data.readUIntBE(this.offset++);
+    return int8;
+  }
 
   this.readString = function(data) {
     var start = this.offset;
     while(data[this.offset++]) { };
     return data.toString('utf8',start, this.offset - 1);
+  };
+
+  this.readStringWithLen = function(data, end) {
+    let str = data.toString('utf8', this.offset, this.offset + end);
+    this.offset += end;
+    return str;
+  };
+
+  this.comsumeUnfinishedData = function(length) {
+    this.offset += length;
   };
 
   this.ParseAuthenticationOk = function(data) {
@@ -364,6 +396,8 @@ var Psql = function(config = {}) {
 
     let identifier = this.readChar(data);
     let length = this.readInt32(data);
+    let resDataLength = length - 4;
+    this.comsumeUnfinishedData(resDataLength); // TODO: wierd
 
     return {identifier};
 
@@ -419,6 +453,8 @@ var Psql = function(config = {}) {
 
     let identifier = this.readChar(data);
     let length = this.readInt32(data);
+    let resDataLength = length - 4;
+    this.comsumeUnfinishedData(resDataLength); // TODO: wierd
 
     return {identifier};
   }
@@ -486,6 +522,123 @@ var Psql = function(config = {}) {
     this.queries.push(resBuffer);
   }
 
+  this.copyTO = function(text) {
+    this.query(text);
+  }
+  this.copyFrom = function(text) {
+    this.query(text);
+    this.sendCopyData( [ '20',
+     'lixu',
+     'I am near polar bears',
+     'photo-with-bears.jpg',
+     '1',
+     '0' ] );
+     this.sendCopyDone();
+  }
+
+  this.sendCopyData = function(arr) {
+    /**
+      copyData
+      -----------------------------------
+      | 'd' | int32 len | str query |
+      -----------------------------------
+    */
+    let identifierBuffer = Buffer([0x64]);
+    let dataString = arr.toString().replace(/,/g, '\t');
+    let queryBuffer = Buffer.from(dataString + '\n', 'utf8');
+
+    let length = 4 + queryBuffer.length;
+    let lengthBuffer = Buffer(4);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, queryBuffer]);
+
+    console.log('d', resBuffer);
+
+    this.queries.push(resBuffer);
+  }
+  this.receiveCopyDone = function(data) {
+    /**
+      receiveCopyDone
+      -------------------
+      | 'c' | int32 len |
+      -------------------
+    */
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+    let dataInRow = this.readStringWithLen(data, length - 4);
+
+    return {identifier}
+
+  }
+  this.sendCopyDone = function() {
+    /**
+      CopyDone
+      -------------------
+      | 'c' | int32 len |
+      -------------------
+    */
+    let identifierBuffer = Buffer([0x63]);
+    let length = 4;
+    let lengthBuffer = Buffer(4);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer]);
+
+    console.log('c', resBuffer);
+    this.queries.push(resBuffer);
+
+  }
+  this.CopyFail = function() {}
+  this.receiveCopyData = function(data) {
+    /**
+      copyData
+      -----------------------------------
+      | 'd' | int32 len | str data |
+      -----------------------------------
+    */
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+    let dataInRow = this.readStringWithLen(data, length - 4).replace(/\n/g, '').split(/\t/g);
+
+    return {identifier, length, dataInRow};
+
+  }
+  this.CopyInResponse = function(data) {
+    /**
+      CopyInResponse Message
+      ------------------------------------------------
+      | 'G' | int32 len | int8 indicator | int16 num |
+      ------------------------------------------------
+    */
+
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+    let indicator = this.readInt8(data);
+    let num = this.readInt16(data);
+    let resDataLength = length - 4 - 1 - 2;
+    this.comsumeUnfinishedData(resDataLength); // TODO: wierd
+
+    return {identifier, length, indicator, num};
+
+  }
+  this.CopyOutResponse = function(data) {
+    /**
+      CopyOutResponse Message
+      ------------------------------------------------
+      | 'H' | int32 len | int8 indicator | int16 num |
+      ------------------------------------------------
+    */
+
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+    let indicator = this.readInt8(data);
+    let num = this.readInt16(data);
+    let resDataLength = length - 4 - 1 - 2;
+    this.comsumeUnfinishedData(resDataLength); // TODO: wierd
+
+    return {identifier, length, indicator, num};
+  }
 };
 
 
