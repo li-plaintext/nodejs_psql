@@ -31,4 +31,4 @@ Psql.connect();
 // Psql.extQuery(`SELECT * FROM photo`);
 
 
-Psql.copyTo(`copy photo TO STDIN `);
+Psql.copyFrom(`copy photo FROM STDIN `);

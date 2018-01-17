@@ -96,6 +96,12 @@ var Psql = function(config = {}) {
           case 'E' :
             console.log(self.ErrorResponse(buffer));
             break;
+          case 'N' :
+            self.NoticeResponse(buffer);
+            break;
+          case 'A' :
+            self.NotificationResponse(buffer);
+            break;
           case '1' :
             console.log(self.parseComplete(buffer));
             break;
@@ -575,7 +581,6 @@ var Psql = function(config = {}) {
     let dataInRow = this.readStringWithLen(data, length - 4).replace(/\n/g, '').split(/\t/g);
 
     return {identifier, length, dataInRow};
-
   }
 
   this.receiveCopyDone = function(data) {
@@ -650,6 +655,40 @@ var Psql = function(config = {}) {
 
     return {identifier, length, indicator, num};
   }
+
+  this.NoticeResponse = function() {
+    /**
+      NoticeResponse Message
+      ------------------------------------------------------
+      | 'N' | int32 len | ... | byte1 code | str value |...
+      ------------------------------------------------------
+    */
+
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+    let resDataLength = length - 4;
+    this.comsumeUnfinishedData(resDataLength); // TODO
+
+    return {identifier};
+  }
+
+  this.NotificationResponse = function() {
+    /**
+      NotificationResponse Message
+      -----------------------------------------------------------
+      | 'A' | int32 len | int32 processID | str name | str msg  |
+      -----------------------------------------------------------
+    */
+
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+    let processID = this.readInt32(data);
+    let name = this.readString(data);
+    let msg = this.readString(data);
+
+    return {identifier, length, processID, name, msg};
+  }
+
 };
 
 
