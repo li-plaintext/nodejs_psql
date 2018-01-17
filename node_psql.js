@@ -30,8 +30,6 @@ const NAMING = {
   'd': 'CopyData',
 };
 
-
-
 var Psql = function(config = {}) {
   this.config = config;
   this.port = config.port || 5432;
