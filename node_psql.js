@@ -24,6 +24,8 @@ const NAMING = {
   'A': 'Notification',
   'G': 'CopyInResponse',
   'H': 'CopyOutResponse',
+  'N': 'NoticeResponse',
+  'A': 'NotificationResponse',
   'c': 'CopyDone',
   'd': 'CopyData',
 };
