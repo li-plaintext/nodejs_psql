@@ -522,7 +522,7 @@ var Psql = function(config = {}) {
     this.queries.push(resBuffer);
   }
 
-  this.copyTO = function(text) {
+  this.copyTo = function(text) {
     this.query(text);
   }
   this.copyFrom = function(text) {
@@ -563,6 +563,21 @@ var Psql = function(config = {}) {
 
     this.queries.push(resBuffer);
   }
+  this.receiveCopyData = function(data) {
+    /**
+      copyData
+      -----------------------------------
+      | 'd' | int32 len | str data |
+      -----------------------------------
+    */
+    let identifier = this.readChar(data);
+    let length = this.readInt32(data);
+    let dataInRow = this.readStringWithLen(data, length - 4).replace(/\n/g, '').split(/\t/g);
+
+    return {identifier, length, dataInRow};
+
+  }
+
   this.receiveCopyDone = function(data) {
     /**
       receiveCopyDone
@@ -595,21 +610,11 @@ var Psql = function(config = {}) {
     this.queries.push(resBuffer);
 
   }
-  this.CopyFail = function() {}
-  this.receiveCopyData = function(data) {
-    /**
-      copyData
-      -----------------------------------
-      | 'd' | int32 len | str data |
-      -----------------------------------
-    */
-    let identifier = this.readChar(data);
-    let length = this.readInt32(data);
-    let dataInRow = this.readStringWithLen(data, length - 4).replace(/\n/g, '').split(/\t/g);
 
-    return {identifier, length, dataInRow};
-
+  this.CopyFail = function() {
+    //TODO
   }
+
   this.CopyInResponse = function(data) {
     /**
       CopyInResponse Message
