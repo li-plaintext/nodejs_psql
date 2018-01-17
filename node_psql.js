@@ -81,7 +81,7 @@ var Psql = function(config = {}) {
             break;
           case 'G' :
             console.log(self.CopyInResponse(buffer));
-            console.log(self.queries.length);
+            self.isEmpty = true;
             self.execQuery();
             break;
           case 'H' :
@@ -527,7 +527,13 @@ var Psql = function(config = {}) {
   }
   this.copyFrom = function(text) {
     this.query(text);
-    this.sendCopyData( [ '20',
+    this.sendCopyData( [ '21',
+     'lixu',
+     'I am near polar bears',
+     'photo-with-bears.jpg',
+     '1',
+     '0' ] );
+    this.sendCopyData( [ '22',
      'lixu',
      'I am near polar bears',
      'photo-with-bears.jpg',
@@ -538,7 +544,7 @@ var Psql = function(config = {}) {
 
   this.sendCopyData = function(arr) {
     /**
-      copyData
+     * @type {[Copy-in mode]}
       -----------------------------------
       | 'd' | int32 len | str query |
       -----------------------------------
