@@ -45,8 +45,10 @@ var Psql = function(config = {}) {
     }
     var self = this;
     this.stream.on('connect', function() {
-      let startupMessageBuffer = self.startupMessage(self.config);
-      self.stream.write(startupMessageBuffer);
+      // let startupMessageBuffer = self.startupMessage(self.config);
+      // self.stream.write(startupMessageBuffer);
+
+      self.SSLRequest();
 
     });
 
@@ -97,7 +99,10 @@ var Psql = function(config = {}) {
             console.log(self.ErrorResponse(buffer));
             break;
           case 'N' :
-            self.NoticeResponse(buffer);
+            if(buffer.length === 1)
+              self.SSLResponse(buffer);
+            else
+              self.NoticeResponse(buffer);
             break;
           case 'A' :
             self.NotificationResponse(buffer);
@@ -208,6 +213,10 @@ var Psql = function(config = {}) {
   }
 
   this.ErrorResponse = function(data) {
+    /**
+     * ErrorResponse
+     * in 2.0 it was just a string, in 3.0 it has structure
+     */
     let identifier = this.readChar(data);
     let length = this.readInt32(data);
 
@@ -656,7 +665,7 @@ var Psql = function(config = {}) {
     return {identifier, length, indicator, num};
   }
 
-  this.NoticeResponse = function() {
+  this.NoticeResponse = function(data) {
     /**
       NoticeResponse Message
       ------------------------------------------------------
@@ -687,6 +696,34 @@ var Psql = function(config = {}) {
     let msg = this.readString(data);
 
     return {identifier, length, processID, name, msg};
+  }
+
+
+  this.SSLRequest = function() {
+    /**
+      SSLRequest
+      -----------------------------------
+      | int32 len | int32 [1234...5678] |
+      -----------------------------------
+    */
+    let length = 8;
+    let lengthBuffer = Buffer(4);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let SSLRequestCode = Buffer(4);
+    SSLRequestCode.writeUInt16BE(1234, 0);
+    SSLRequestCode.writeUInt16BE(5679, 2);
+
+    let resBuffer = Buffer.concat([lengthBuffer, SSLRequestCode]);
+
+    console.log('SSLRequest', resBuffer);
+    this.stream.write(resBuffer);
+  }
+
+  this.SSLResponse = function(data) {
+    let identifier = this.readChar(data);
+
+    return { identifier };
   }
 
 };
