@@ -1,0 +1,28 @@
+CA: 
+	openssl genrsa -out rootCA.key 2048
+	openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 1024 -out rootCA.crt
+
+
+
+Server:
+	openssl genrsa -out server.key 2048
+	openssl req -new -key server.key -out server.csr
+
+
+Generate server certificate based on our own CA certificate
+
+	openssl x509 -req -in server.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out server.crt -days 1024 -sha256
+
+Client:
+	openssl genrsa -out client.key 2048
+	openssl req -new -key client.key -out client.csr
+
+
+Generate client certificate based on our own CA certificate
+	openssl x509 -req -in client.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -out client.crt -days 1024 -sha256
+
+
+
+NOTES:
+	common name ( or your name): "have to be as same as your host machine's name"
+	chmod 600 *.key

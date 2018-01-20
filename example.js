@@ -3,7 +3,9 @@ var Psql = require('./node_psql');
 var Psql = new Psql({
   user: 'lixu',
   database: 'genomedb',
-  port: 5432
+  port: 5432,
+  ssl: true,
+  sslPath: './ssl/keys/'
 });
 
 Psql.connect();
@@ -28,7 +30,7 @@ Psql.connect();
 // Psql.query(`DROP FUNCTION query_all()`);
 
 
-// Psql.extQuery(`SELECT * FROM photo`);
+Psql.extQuery(`SELECT * FROM photo`);
 
 
 // Psql.copyFrom(`copy photo FROM STDIN `);

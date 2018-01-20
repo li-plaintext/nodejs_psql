@@ -1,4 +1,6 @@
-var net = require('net');
+const net = require('net');
+const tls = require('tls');
+const fs = require('fs');
 
 const NAMING = {
   // request
@@ -38,6 +40,32 @@ var Psql = function(config = {}) {
   this.stream = new net.Stream();
   this.offset = 0;
   this.isEmpty = false;
+  this.options = {
+    ca: fs.readFileSync(config.sslPath + "/rootCA.crt").toString(),
+    key: fs.readFileSync(config.sslPath + "client.key").toString(),
+    cert: fs.readFileSync(config.sslPath + "client.crt").toString()
+  };
+
+  this.SSLConnect = function() {
+    var self = this;
+
+    self.stream = tls.connect({
+      socket: self.stream,
+      servername: self.host,
+      rejectUnauthorized: false,
+      ca: self.options.ca,
+      key: self.options.key,
+      cert: self.options.cert,
+    });
+
+    this.sendStartupMessage();
+
+    this.stream.on('data', this.parseIncomingBuffer.bind(this));
+    this.stream.on('error', function(data) {
+      console.log('error', data);
+    });
+
+  }
 
   this.connect = function() {
     if(this.stream.readyState == 'closed'){
@@ -45,92 +73,110 @@ var Psql = function(config = {}) {
     }
     var self = this;
     this.stream.on('connect', function() {
-      // let startupMessageBuffer = self.startupMessage(self.config);
-      // self.stream.write(startupMessageBuffer);
-
-      self.SSLRequest();
-
-    });
-
-    this.stream.on('data', function(buffer) {
-      while(self.offset < buffer.length){
-        let identifier = String.fromCharCode(buffer[self.offset]);
-        console.log("curent identifier: " + identifier, NAMING[identifier]);
-        switch(String.fromCharCode(buffer[self.offset])) {
-          case 'R' :
-            self.ParseAuthenticationOk(buffer);
-            break;
-          case 'S' :
-            self.ParseparameterStatus(buffer);
-            break;
-          case 'Z' :
-            self.queries.length <= 0 && self.terminate();
-            self.ReadyForQuery(buffer);
-            self.execQuery();
-            break;
-          case 'K' :
-            self.BackendKeyData(buffer);
-            break;
-          case 'T' :
-            console.log(self.RowDescription(buffer));
-            break;
-          case 'D' :
-            let row = self.DataRow(buffer);
-            console.log(row);
-            break;
-          case 'C' :
-            self.CommandComplete(buffer);
-            break;
-          case 'G' :
-            console.log(self.CopyInResponse(buffer));
-            self.isEmpty = true;
-            self.execQuery();
-            break;
-          case 'H' :
-            console.log(self.CopyOutResponse(buffer));
-            break;
-          case 'd' :
-            console.log(self.receiveCopyData(buffer));
-            break;
-          case 'c' :
-            self.receiveCopyDone(buffer);
-            break;
-          case 'E' :
-            console.log(self.ErrorResponse(buffer));
-            break;
-          case 'N' :
-            if(buffer.length === 1)
-              self.SSLResponse(buffer);
-            else
-              self.NoticeResponse(buffer);
-            break;
-          case 'A' :
-            self.NotificationResponse(buffer);
-            break;
-          case '1' :
-            console.log(self.parseComplete(buffer));
-            break;
-          case '2' :
-            console.log(self.bindComplete(buffer));
-            break;
-          default:
-            self.offset = buffer.length;
-            break;
-        }
+      console.log(self.config);
+      if(self.config.ssl){
+        console.log("SSL mode");
+        self.SSLRequest();
+      } else {
+        console.log("Ordinary mode");
+        self.sendStartupMessage();
       }
 
-      console.log('=============end==================');
-      console.log('offset: ', self.offset);
-      console.log('buffer length: ', buffer.length);
-
-      //clean up
-      self.offset = 0;
     });
+
+    this.stream.on('data', this.parseIncomingBuffer.bind(this));
 
     this.stream.on('error', function(error){
       console.log(error.toString());
     });
   };
+
+  this.parseIncomingBuffer = function(buffer) {
+    var self = this;
+
+    while(self.offset < buffer.length){
+      let identifier = String.fromCharCode(buffer[self.offset]);
+      console.log("curent identifier: " + identifier, NAMING[identifier]);
+      switch(String.fromCharCode(buffer[self.offset])) {
+        case 'R' :
+          self.ParseAuthenticationOk(buffer);
+          break;
+        case 'S' :
+          if(buffer.length === 1) {
+            self.SSLResponse(buffer);
+            self.SSLConnect();
+          }
+          else
+            self.ParseparameterStatus(buffer);
+          break;
+        case 'Z' :
+          self.queries.length <= 0 && self.terminate();
+          self.ReadyForQuery(buffer);
+          self.execQuery();
+          break;
+        case 'K' :
+          self.BackendKeyData(buffer);
+          break;
+        case 'T' :
+          console.log(self.RowDescription(buffer));
+          break;
+        case 'D' :
+          let row = self.DataRow(buffer);
+          console.log(row);
+          break;
+        case 'C' :
+          self.CommandComplete(buffer);
+          break;
+        case 'G' :
+          console.log(self.CopyInResponse(buffer));
+          self.isEmpty = true;
+          self.execQuery();
+          break;
+        case 'H' :
+          console.log(self.CopyOutResponse(buffer));
+          break;
+        case 'd' :
+          console.log(self.receiveCopyData(buffer));
+          break;
+        case 'c' :
+          self.receiveCopyDone(buffer);
+          break;
+        case 'E' :
+          console.log(self.ErrorResponse(buffer));
+          break;
+        case 'N' :
+          if(buffer.length === 1)
+            self.SSLResponse(buffer);
+          else
+            self.NoticeResponse(buffer);
+          break;
+        case 'A' :
+          self.NotificationResponse(buffer);
+          break;
+        case '1' :
+          console.log(self.parseComplete(buffer));
+          break;
+        case '2' :
+          console.log(self.bindComplete(buffer));
+          break;
+        default:
+          self.offset = buffer.length;
+          break;
+      }
+    }
+
+    console.log('=============end==================');
+    console.log('offset: ', self.offset);
+    console.log('buffer length: ', buffer.length);
+
+    //clean up
+    self.offset = 0;
+  }
+
+  this.sendStartupMessage = function () {
+    let startupMessageBuffer = this.startupMessage(this.config);
+    this.stream.write(startupMessageBuffer);
+  }
 
   this.startupMessage = function (config) {
     /*
@@ -151,6 +197,7 @@ var Psql = function(config = {}) {
 
      let resBuffer = Buffer.concat([lengthBuffer, protocolBuffer, payloadBuffer]);
 
+     console.log("startup message", resBuffer);
      return resBuffer;
   };
 
