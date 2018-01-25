@@ -99,7 +99,7 @@ var Psql = function(config = {}) {
       console.log("curent identifier: " + identifier, NAMING[identifier]);
       switch(String.fromCharCode(buffer[self.offset])) {
         case 'R' :
-          self.ParseAuthenticationOk(buffer);
+          self.AuthenticationProcess(buffer);
           break;
         case 'S' :
           if(buffer.length === 1) {
@@ -201,6 +201,24 @@ var Psql = function(config = {}) {
      return resBuffer;
   };
 
+  this.sendPasswordMessage = function () {
+    let passwordMessageBuffer = this.PasswordMessage(this.config.password);
+    this.stream.write(passwordMessageBuffer);
+  }
+
+  this.PasswordMessage = function (text = '') {
+    let identifierBuffer = Buffer([0x70]);
+    let passwordBuffer = Buffer.from(text, 'utf8');
+    let length = 4 + passwordBuffer.length;
+    let lengthBuffer = Buffer(4);
+    lengthBuffer.writeUInt32BE(length, 0);
+
+    let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer, passwordBuffer]);
+
+    console.log("Password Message", resBuffer);
+    return resBuffer;
+  }
+
   this.readChar = function(data) {
     return data[this.offset++];
   }
@@ -237,11 +255,53 @@ var Psql = function(config = {}) {
     this.offset += length;
   };
 
-  this.ParseAuthenticationOk = function(data) {
+  this.AuthenticationProcess = function(data) {
     let identifier = data[this.offset++];
-    let length = data.readUIntBE(this.offset, 4)
-    this.offset += length;
+    let length = this.readInt32(data);
+    let indicator = this.readInt32(data);
+
+    if(length === 8) {
+      switch(indicator) {
+        case 0: return;
+        case 2: return this.AuthenticationKerberosV5(data);
+        case 3: return this.AuthenticationCleartextPassword(data);
+        case 6: return this.AuthenticationSCMCredential(data);
+        case 7: return this.AuthenticationGSS(data);
+        case 9: return this.AuthenticationSSPI(data);
+        default:
+          break;
+      }
+
+
+    }
+    if(indicator === 0) return;
+
+    if(indicator === 2) return this.AuthenticationKerberosV5(data);
+
+    if(indicator === 3) return this.AuthenticationCleartextPassword(data);
+
+    if(indicator === 6) return this.AuthenticationSCMCredential(data);
+
+    if(indicator === 7) return this.AuthenticationGSS(data);
+
+    if(indicator === 9) return this.AuthenticationSSPI(data);
+
+    if(length === 12 && indicator === 3) return this.AuthenticationCleartextPassword(data);
+
+    if(indicator === 8) return this.AuthenticationGSSContinue(data);
+
   }
+  this.AuthenticationOk = function(data) {
+  }
+  this.AuthenticationKerberosV5 = function(data) {}
+  this.AuthenticationCleartextPassword = function(data) {
+    this.sendPasswordMessage();
+  }
+  this.AuthenticationMD5Password = function(data) {}
+  this.AuthenticationSCMCredential = function(data) {}
+  this.AuthenticationGSS = function(data) {}
+  this.AuthenticationSSPI = function(data) {}
+  this.AuthenticationGSSContinue = function(data) {}
 
   this.ParseparameterStatus = function(data) {
     /**
