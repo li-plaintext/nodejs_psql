@@ -1,6 +1,8 @@
 const net = require('net');
 const tls = require('tls');
 const fs = require('fs');
+const crypto = require('crypto');
+
 
 const NAMING = {
   // request
@@ -201,14 +203,25 @@ var Psql = function(config = {}) {
      return resBuffer;
   };
 
-  this.sendPasswordMessage = function () {
-    let passwordMessageBuffer = this.PasswordMessage(this.config.password);
+  this.sendPasswordMessage = function (salt) {
+    let password =  this.config.password;
+
+    if(salt) {
+      let userPass = this.config.password + this.config.user;
+      password = this.md5(this.md5(userPass));
+      password = 'md5' + password;
+      console.log(userPass);
+      console.log(this.md5(userPass));
+      console.log(password);
+    }
+    let passwordMessageBuffer = this.PasswordMessage(password);
+
     this.stream.write(passwordMessageBuffer);
   }
 
   this.PasswordMessage = function (text = '') {
     let identifierBuffer = Buffer([0x70]);
-    let passwordBuffer = Buffer.from(text, 'utf8');
+    let passwordBuffer = Buffer.from(text + '\0', 'utf8');
     let length = 4 + passwordBuffer.length;
     let lengthBuffer = Buffer(4);
     lengthBuffer.writeUInt32BE(length, 0);
@@ -255,6 +268,12 @@ var Psql = function(config = {}) {
     this.offset += length;
   };
 
+  this.md5 = function(text, salt) {
+    return salt?
+      crypto.createHash('md5', salt).update(text).digest("hex"):
+      crypto.createHash('md5').update(text).digest("hex");
+  };
+
   this.AuthenticationProcess = function(data) {
     let identifier = data[this.offset++];
     let length = this.readInt32(data);
@@ -262,7 +281,7 @@ var Psql = function(config = {}) {
 
     if(length === 8) {
       switch(indicator) {
-        case 0: return;
+        case 0: return this.AuthenticationOk(data);
         case 2: return this.AuthenticationKerberosV5(data);
         case 3: return this.AuthenticationCleartextPassword(data);
         case 6: return this.AuthenticationSCMCredential(data);
@@ -271,22 +290,10 @@ var Psql = function(config = {}) {
         default:
           break;
       }
-
-
     }
-    if(indicator === 0) return;
 
-    if(indicator === 2) return this.AuthenticationKerberosV5(data);
 
-    if(indicator === 3) return this.AuthenticationCleartextPassword(data);
-
-    if(indicator === 6) return this.AuthenticationSCMCredential(data);
-
-    if(indicator === 7) return this.AuthenticationGSS(data);
-
-    if(indicator === 9) return this.AuthenticationSSPI(data);
-
-    if(length === 12 && indicator === 3) return this.AuthenticationCleartextPassword(data);
+    if(length === 12 && indicator === 5) return this.AuthenticationMD5Password(data);
 
     if(indicator === 8) return this.AuthenticationGSSContinue(data);
 
@@ -295,9 +302,14 @@ var Psql = function(config = {}) {
   }
   this.AuthenticationKerberosV5 = function(data) {}
   this.AuthenticationCleartextPassword = function(data) {
+    console.log('request CleartextPassword');
     this.sendPasswordMessage();
   }
-  this.AuthenticationMD5Password = function(data) {}
+  this.AuthenticationMD5Password = function(data) {
+    console.log('request MD5Password');
+    let salt = this.readStringWithLen(data, 4);
+    this.sendPasswordMessage(salt);
+  }
   this.AuthenticationSCMCredential = function(data) {}
   this.AuthenticationGSS = function(data) {}
   this.AuthenticationSSPI = function(data) {}
@@ -320,6 +332,7 @@ var Psql = function(config = {}) {
   }
 
   this.ErrorResponse = function(data) {
+    console.log('ErrorResponse in erro ');
     /**
      * ErrorResponse
      * in 2.0 it was just a string, in 3.0 it has structure
@@ -421,6 +434,8 @@ var Psql = function(config = {}) {
       | 'D' | int32 len | int16 numfields | int32 textLength |  str text |
       ---------------------------------------------------------------------
      */
+
+
     let identifier = this.readChar(data);
     let length = this.readInt32(data);
     let numfields = this.readInt16(data);
@@ -430,7 +445,7 @@ var Psql = function(config = {}) {
       let textLength = this.readInt32(data);
       let text = textLength == -1 ? null : data.toString('utf8', this.offset, (this.offset += textLength));
       rowArray.push(text);
-    };
+    }
 
     return rowArray;
   };
