@@ -208,11 +208,11 @@ var Psql = function(config = {}) {
 
     if(salt) {
       let userPass = this.config.password + this.config.user;
-      password = this.md5(this.md5(userPass));
+      password = this.md5(this.md5(userPass) + salt);
       password = 'md5' + password;
       console.log(userPass);
       console.log(this.md5(userPass));
-      console.log(password);
+      console.log("md5fb0ba80fad895664c7aea7c8ce462505 ->",password);
     }
     let passwordMessageBuffer = this.PasswordMessage(password);
 
