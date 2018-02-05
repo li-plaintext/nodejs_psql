@@ -2,7 +2,7 @@ var Psql = require('./node_psql');
 
 var Psql = new Psql({
   user: 'lixu',
-  database: 'lixudb',
+  database: 'genomedb',
   password: 'lixu',
   port: 5432,
   ssl: false,
@@ -31,7 +31,7 @@ Psql.connect();
 // Psql.query(`DROP FUNCTION query_all()`);
 
 
-Psql.extQuery(`SELECT * FROM company`);
+Psql.extQuery(`SELECT * FROM photo;`);
 
 
 // Psql.copyFrom(`copy photo FROM STDIN `);

@@ -207,12 +207,9 @@ var Psql = function(config = {}) {
     let password =  this.config.password;
 
     if(salt) {
-      let userPass = this.config.password + this.config.user;
-      password = this.md5(this.md5(userPass) + salt);
-      password = 'md5' + password;
-      console.log(userPass);
-      console.log(this.md5(userPass));
-      console.log("md5fb0ba80fad895664c7aea7c8ce462505 ->",password);
+      let userPassBuffer =  Buffer.from(this.md5(this.config.password + this.config.user));
+      let passwordWithSalt = Buffer.concat([userPassBuffer, salt]);
+      password = 'md5' + this.md5(passwordWithSalt).toString('utf8');
     }
     let passwordMessageBuffer = this.PasswordMessage(password);
 
@@ -268,10 +265,8 @@ var Psql = function(config = {}) {
     this.offset += length;
   };
 
-  this.md5 = function(text, salt) {
-    return salt?
-      crypto.createHash('md5', salt).update(text).digest("hex"):
-      crypto.createHash('md5').update(text).digest("hex");
+  this.md5 = function(text) {
+    return crypto.createHash('md5').update(text).digest('hex');
   };
 
   this.AuthenticationProcess = function(data) {
@@ -307,7 +302,12 @@ var Psql = function(config = {}) {
   }
   this.AuthenticationMD5Password = function(data) {
     console.log('request MD5Password');
-    let salt = this.readStringWithLen(data, 4);
+    console.log(data.length, this.offset);
+
+    // let salt = this.readStringWithLen(data, 4);
+    // console.log('---------', salt.length);
+    let salt = data.slice(this.offset, this.offset + 4);
+    this.offset += 4;
     this.sendPasswordMessage(salt);
   }
   this.AuthenticationSCMCredential = function(data) {}
