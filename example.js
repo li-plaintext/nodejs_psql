@@ -5,7 +5,7 @@ var Psql = new Psql({
   database: 'genomedb',
   password: 'lixu',
   port: 5432,
-  ssl: false,
+  ssl: true,
   sslPath: './ssl/keys/'
 });
 

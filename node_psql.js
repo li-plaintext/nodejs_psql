@@ -3,71 +3,21 @@ const tls = require('tls');
 const fs = require('fs');
 const crypto = require('crypto');
 
-
-const NAMING = {
-  // request
-  'send->Q': 'simple query',
-  'send->X': 'terminate',
-  'send->P': 'parse',
-  'send->B': 'bind',
-  'send->E': 'exection',
-  'send->S': 'sync',
-
-  // response
-  'R': 'AuthenticationOk',
-  'S': 'ParameterStatus',
-  'K': 'BackendKeyData',
-  'Z': 'ReadyForQuery',
-  'T': 'RowDescription',
-  'D': 'DataRow',
-  'C': 'CommandComplete',
-  'E': 'Error',
-  'N': 'Notice',
-  '1': 'ParseComplete',
-  '2': 'BindComplete',
-  'A': 'Notification',
-  'G': 'CopyInResponse',
-  'H': 'CopyOutResponse',
-  'N': 'NoticeResponse',
-  'A': 'NotificationResponse',
-  'c': 'CopyDone',
-  'd': 'CopyData',
-};
-
 var Psql = function(config = {}) {
   this.config = config;
   this.port = config.port || 5432;
   this.host = config.host || '127.0.0.1';
   this.queries = [];
+  this.res = [];
+  this.callback = undefined;
   this.stream = new net.Stream();
   this.offset = 0;
   this.isEmpty = false;
   this.options = {
-    ca: fs.readFileSync(config.sslPath + "/rootCA.crt").toString(),
-    key: fs.readFileSync(config.sslPath + "client.key").toString(),
-    cert: fs.readFileSync(config.sslPath + "client.crt").toString()
+    // ca: fs.readFileSync(config.sslPath + "/rootCA.crt").toString(),
+    // key: fs.readFileSync(config.sslPath + "client.key").toString(),
+    // cert: fs.readFileSync(config.sslPath + "client.crt").toString()
   };
-
-  this.SSLConnect = function() {
-    var self = this;
-
-    self.stream = tls.connect({
-      socket: self.stream,
-      servername: self.host,
-      rejectUnauthorized: false,
-      ca: self.options.ca,
-      key: self.options.key,
-      cert: self.options.cert,
-    });
-
-    this.sendStartupMessage();
-
-    this.stream.on('data', this.parseIncomingBuffer.bind(this));
-    this.stream.on('error', function(data) {
-      console.log('error', data);
-    });
-
-  }
 
   this.connect = function() {
     if(this.stream.readyState == 'closed'){
@@ -167,10 +117,6 @@ var Psql = function(config = {}) {
       }
     }
 
-    console.log('=============end==================');
-    console.log('offset: ', self.offset);
-    console.log('buffer length: ', buffer.length);
-
     //clean up
     self.offset = 0;
   }
@@ -229,46 +175,6 @@ var Psql = function(config = {}) {
     return resBuffer;
   }
 
-  this.readChar = function(data) {
-    return data[this.offset++];
-  }
-
-  this.readInt32 = function(data) {
-    let int32 = data.readUIntBE(this.offset, 4);
-    this.offset += 4;
-    return int32;
-  }
-
-  this.readInt16 = function(data) {
-    let int16 = data.readUIntBE(this.offset, 2);
-    this.offset += 2;
-    return int16;
-  }
-  this.readInt8 = function(data) {
-    let int8 = data.readUIntBE(this.offset++);
-    return int8;
-  }
-
-  this.readString = function(data) {
-    var start = this.offset;
-    while(data[this.offset++]) { };
-    return data.toString('utf8',start, this.offset - 1);
-  };
-
-  this.readStringWithLen = function(data, end) {
-    let str = data.toString('utf8', this.offset, this.offset + end);
-    this.offset += end;
-    return str;
-  };
-
-  this.comsumeUnfinishedData = function(length) {
-    this.offset += length;
-  };
-
-  this.md5 = function(text) {
-    return crypto.createHash('md5').update(text).digest('hex');
-  };
-
   this.AuthenticationProcess = function(data) {
     let identifier = data[this.offset++];
     let length = this.readInt32(data);
@@ -293,8 +199,7 @@ var Psql = function(config = {}) {
     if(indicator === 8) return this.AuthenticationGSSContinue(data);
 
   }
-  this.AuthenticationOk = function(data) {
-  }
+  this.AuthenticationOk = function(data) {}
   this.AuthenticationKerberosV5 = function(data) {}
   this.AuthenticationCleartextPassword = function(data) {
     console.log('request CleartextPassword');
@@ -821,6 +726,33 @@ var Psql = function(config = {}) {
   }
 
 
+  /**
+   *
+   * SSL
+   *
+   */
+
+  this.SSLConnect = function() {
+    var self = this;
+
+    self.stream = tls.connect({
+      socket: self.stream,
+      servername: self.host,
+      rejectUnauthorized: false,
+      // // ca: self.options.ca,
+      // key: self.options.key,
+      // cert: self.options.cert,
+    });
+
+    this.sendStartupMessage();
+
+    this.stream.on('data', this.parseIncomingBuffer.bind(this));
+    this.stream.on('error', function(data) {
+      console.log('error', data);
+    });
+
+  }
+
   this.SSLRequest = function() {
     /**
       SSLRequest
@@ -848,6 +780,83 @@ var Psql = function(config = {}) {
     return { identifier };
   }
 
+
+  /**
+   *  utils
+   *
+   *  buffer reader/parser
+   */
+
+  this.readChar = function(data) {
+    return data[this.offset++];
+  }
+
+  this.readInt32 = function(data) {
+    let int32 = data.readUIntBE(this.offset, 4);
+    this.offset += 4;
+    return int32;
+  }
+
+  this.readInt16 = function(data) {
+    let int16 = data.readUIntBE(this.offset, 2);
+    this.offset += 2;
+    return int16;
+  }
+
+  this.readInt8 = function(data) {
+    let int8 = data.readUIntBE(this.offset++);
+    return int8;
+  }
+
+  this.readString = function(data) {
+    var start = this.offset;
+    while(data[this.offset++]) { };
+    return data.toString('utf8',start, this.offset - 1);
+  }
+
+  this.readStringWithLen = function(data, end) {
+    let str = data.toString('utf8', this.offset, this.offset + end);
+    this.offset += end;
+    return str;
+  }
+
+  this.comsumeUnfinishedData = function(length) {
+    this.offset += length;
+  }
+
+  this.md5 = function(text) {
+    return crypto.createHash('md5').update(text).digest('hex');
+  }
+};
+
+const NAMING = {
+  // request
+  'send->Q': 'simple query',
+  'send->X': 'terminate',
+  'send->P': 'parse',
+  'send->B': 'bind',
+  'send->E': 'exection',
+  'send->S': 'sync',
+
+  // response
+  'R': 'AuthenticationOk',
+  'S': 'ParameterStatus',
+  'K': 'BackendKeyData',
+  'Z': 'ReadyForQuery',
+  'T': 'RowDescription',
+  'D': 'DataRow',
+  'C': 'CommandComplete',
+  'E': 'Error',
+  'N': 'Notice',
+  '1': 'ParseComplete',
+  '2': 'BindComplete',
+  'A': 'Notification',
+  'G': 'CopyInResponse',
+  'H': 'CopyOutResponse',
+  'N': 'NoticeResponse',
+  'A': 'NotificationResponse',
+  'c': 'CopyDone',
+  'd': 'CopyData',
 };
 
 
