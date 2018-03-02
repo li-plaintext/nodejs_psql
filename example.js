@@ -12,10 +12,10 @@ var Psql = new Psql({
 Psql.connect();
 
 // CRUD exmaples
-// Psql.query(`SELECT * FROM photo;`);
-// Psql.query(`INSERT INTO photo (name, description, filename, views, age) VALUES ('new', 'description', 'filename', 1, 2);`);
-// Psql.query(`UPDATE photo SET description='xxx' WHERE name='new';`);
-// Psql.query(`DELETE FROM photo WHERE name='new';`);
+Psql.query(`SELECT * FROM photo;`,(res) => { console.log(res)} );
+Psql.query(`INSERT INTO photo (name, description, filename, views, age) VALUES ('new', 'description', 'filename', 1, 2);`);
+Psql.query(`UPDATE photo SET description='xxx' WHERE name='new';`);
+Psql.query(`DELETE FROM photo WHERE name='new';`);
 
 // Transaction exmaple
 // Psql.query(`
@@ -31,7 +31,7 @@ Psql.connect();
 // Psql.query(`DROP FUNCTION query_all()`);
 
 
-Psql.extQuery(`SELECT * FROM photo;`);
+// Psql.extQuery(`SELECT * FROM photo;`);
 
 
 // Psql.copyFrom(`copy photo FROM STDIN `);
