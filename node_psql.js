@@ -68,12 +68,12 @@ var Psql = function(config = {}) {
           this.results.push(row);
           break;
         case 'C':
-          self.CommandComplete(buffer);
-          if (typeof this.callback === 'function') {
+          const { text } = self.CommandComplete(buffer);
+          if (text && !text.match(/BEGIN/g) && typeof this.callback === 'function') {
             this.callback(this.results);
+            this.callback = undefined;
+            this.results = [];
           }
-          this.callback = undefined;
-          this.results = [];
           break;
         case 'G':
           log(self.CopyInResponse(buffer));
@@ -152,7 +152,6 @@ var Psql = function(config = {}) {
       payloadBuffer
     ]);
 
-    log('startup message', resBuffer);
     return resBuffer;
   };
 
@@ -184,7 +183,6 @@ var Psql = function(config = {}) {
       passwordBuffer
     ]);
 
-    log('Password Message', resBuffer);
     return resBuffer;
   };
 
@@ -391,18 +389,30 @@ var Psql = function(config = {}) {
       payloadBuffer
     ]);
 
-    this.queries.push(resBuffer);
-    this.callback = callback;
+    this.pushToQuereies(resBuffer, callback);
   };
+
+  this.pushToQuereies = function(buffer, callback) {
+    this.queries.push({
+      buffer,
+      callback
+    });
+  }
 
   this.execQuery = function() {
     if (this.queries.length <= 0) return;
 
     if (this.isEmpty) {
       // <= send rest of buffer in array
-      while (this.queries.length > 0) this.stream.write(this.queries.shift());
+      while (this.queries.length > 0) {
+        const { buffer, callback } = this.queries.shift();
+        this.callback = callback;
+        this.stream.write(buffer);
+      };
     } else {
-      this.stream.write(this.queries.shift());
+      const { buffer, callback } = this.queries.shift();
+      this.callback = callback;
+      this.stream.write(buffer);
     }
   };
 
@@ -416,11 +426,11 @@ var Psql = function(config = {}) {
     this.stream.write(new Buffer([88, 0, 0, 0, 4]));
   };
 
-  this.extQuery = function(text) {
+  this.extQuery = function(text, callback) {
     this.parseMessage(text);
     this.bindMessage();
     this.executeMessage();
-    this.syncMessage();
+    this.syncMessage(callback);
 
     this.isEmpty = true;
   };
@@ -453,9 +463,7 @@ var Psql = function(config = {}) {
       parameterDataTypesLenBuffer
     ]);
 
-    log('P', resBuffer);
-
-    this.queries.push(resBuffer);
+    this.pushToQuereies(resBuffer);
   };
 
   this.parseComplete = function(data) {
@@ -524,8 +532,7 @@ var Psql = function(config = {}) {
       resultFormatBuffer
     ]);
 
-    log('B', resBuffer);
-    this.queries.push(resBuffer);
+    this.pushToQuereies(resBuffer);
   };
 
   this.bindComplete = function(data) {
@@ -591,11 +598,10 @@ var Psql = function(config = {}) {
       numberOfRowsBuffer
     ]);
 
-    log('E', resBuffer);
-    this.queries.push(resBuffer);
+    this.pushToQuereies(resBuffer);
   };
 
-  this.syncMessage = function() {
+  this.syncMessage = function(callback) {
     /**
       syncMessage
       -------------------
@@ -611,9 +617,7 @@ var Psql = function(config = {}) {
 
     let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer]);
 
-    log('S', resBuffer);
-
-    this.queries.push(resBuffer);
+    this.pushToQuereies(resBuffer, callback);
   };
 
   this.copyTo = function(text) {
@@ -663,7 +667,7 @@ var Psql = function(config = {}) {
 
     log('d', resBuffer);
 
-    this.queries.push(resBuffer);
+    this.pushToQuereies(resBuffer);
   };
   this.receiveCopyData = function(data) {
     /**
@@ -709,7 +713,7 @@ var Psql = function(config = {}) {
     let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer]);
 
     log('c', resBuffer);
-    this.queries.push(resBuffer);
+    this.pushToQuereies(resBuffer);
   };
 
   this.CopyFail = function() {
@@ -824,7 +828,6 @@ var Psql = function(config = {}) {
 
     let resBuffer = Buffer.concat([lengthBuffer, SSLRequestCode]);
 
-    log('SSLRequest', resBuffer);
     this.stream.write(resBuffer);
   };
 
