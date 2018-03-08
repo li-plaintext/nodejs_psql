@@ -7,26 +7,15 @@
 <span><img src="https://img.shields.io/npm/v/npm.svg" /><span>
 <span><img src="https://badges.gitter.im/Join%20Chat.svg" /><span>
 
-
-Start-up
-46.2.2. Simple Query
-46.2.3. Extended Query
-46.2.4. Function Call
-46.2.5. COPY Operations
-46.2.6. Asynchronous Operations
-46.2.7. Canceling Requests in Progress
-46.2.8. Termination
-46.2.9. SSL Session Encryption
-
-1. [Start up](#Start up)
-1. [Simple Query](#Simple Query)
-1. [Extended Query](#Extended Query)
-1. [Function Call](#Function Call)
-1. [COPY Operations](#COPY Operations)
-1. [Asynchronous Operations](#Asynchronous Operations)
-1. [Canceling Requests in Progress](#Canceling Requests in Progress)
+1. [Startup](#Start_up)
+1. [Simple Query](#Simple_Query)
+1. [Extended Query](#Extended_Query)
+1. [Function Call](#Function_Call)
+1. [COPY Operations](#COPY_Operations)
+1. [Asynchronous Operations](#Asynchronous_Operations)
+1. [Canceling Requests in Progress](#Canceling_Requests_in_Progress)
 1. [Termination](#Termination)
-1. [SSL Session Encryption](#SSL Session Encryption)
+1. [SSL Session Encryption](#SSL_Session_Encryption)
 
 ## Start up
 
