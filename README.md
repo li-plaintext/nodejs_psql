@@ -100,10 +100,7 @@ psql.query(`COPY photo TO 'PATH/YOUR_FILE.csv' DELIMITER ',';`);
 It supports any CA that can be recognised by Nodejs `tls` modules.
 Currently `rejectUnauthorized` is set up to `false`, so any self-signed CA works.
 
-### License
-
-BSD 2-Clause License
-
+## License
 Copyright (c) 2017, Li Xu
 All rights reserved.
 
