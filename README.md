@@ -17,6 +17,8 @@
   1. [Termination](#Termination) :white_check_mark:
   1. [SSL Session Encryption](#SSL_Session_Encryption) :white_check_mark:
 
+> $ npm install nodejs_psql
+
 ## Start up
 
 ```javascript
