@@ -7,7 +7,7 @@
 <span><img src="https://img.shields.io/npm/v/npm.svg" /><span>
 <span><img src="https://badges.gitter.im/Join%20Chat.svg" /><span>
 
-  1. [Startup](#Start_up) :heavy_check_mark:
+  1. [Startup](#Start_up) :white_check_mark:
   1. [Simple Query](#Simple_Query) :white_check_mark:
   1. [Extended Query](#Extended_Query) :white_check_mark:
   1. [Function Call](#Function_Call) :x:
