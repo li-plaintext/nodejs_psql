@@ -1,24 +1,23 @@
-var Psql = require('./node_psql');
+const Psql = require('./node_psql');
 
-var Psql = new Psql({
+const psql = new Psql({
   user: 'lixu',
   database: 'genomedb',
   password: 'lixu',
   port: 5432,
   ssl: true,
-  sslPath: './ssl/keys/'
 });
 
-Psql.connect();
+psql.connect();
 
 // CRUD exmaples
-// Psql.query(`SELECT * FROM photo;`, (res) => {console.log(res)} );
-// Psql.query(`INSERT INTO photo (name, description, filename, views, age) VALUES ('new', 'description', 'filename', 1, 2);`, (res) => res);
-// Psql.query(`UPDATE photo SET description='xxx' WHERE name='new';`, (res) => res);
-// Psql.query(`DELETE FROM photo WHERE name='new';`, (res) => res);
+// psql.query(`SELECT * FROM photo;`, (res) => {console.log(res)} );
+// psql.query(`INSERT INTO photo (name, description, filename, views, age) VALUES ('new', 'description', 'filename', 1, 2);`, (res) => res);
+// psql.query(`UPDATE photo SET description='xxx' WHERE name='new';`, (res) => res);
+// psql.query(`DELETE FROM photo WHERE name='new';`, (res) => res);
 
 // Transaction exmaple
-// Psql.query(`
+// psql.query(`
 //   BEGIN;
 //     select * from photo;
 //   COMMIT;
@@ -26,25 +25,25 @@ Psql.connect();
 
 
 // Function call
-// Psql.query(`CREATE FUNCTION query_all() RETURNS SETOF photo AS $$ SELECT * FROM photo $$ LANGUAGE SQL;`);
-// Psql.query(`select query_all()`, (res) => {console.log(res)});
-// Psql.query(`DROP FUNCTION query_all()`);
+// psql.query(`CREATE FUNCTION query_all() RETURNS SETOF photo AS $$ SELECT * FROM photo $$ LANGUAGE SQL;`);
+// psql.query(`select query_all()`, (res) => {console.log(res)});
+// psql.query(`DROP FUNCTION query_all()`);
 
 
-Psql.extQuery(`SELECT * FROM photo;`, (res) => { console.log(res) });
+psql.extQuery(`SELECT * FROM photo;`, (res) => { console.log(res) });
 
-// Psql.copyFrom({
+// psql.copyFrom({
 //   copy: 'photo',
 //   data: [
 //     [ '41', 'lixu', 'I am near polar bears', 'photo-with-bears.jpg', '1', '0'],
 //     [ '42', 'lixu', 'I am near bears', 'photo-with-bears', '4', '1'],
 //   ]
 // });
-
-// Psql.copyTo({
+//
+// psql.copyTo({
 //    copy: 'photo',
 //    delimiter: ','
 // }, (res) => { console.log(res) });
-
-// Psql.query(`COPY photo FROM '/Users/lixu/Desktop/people.csv' DELIMITER ','; `);
-// Psql.query(`COPY photo TO 'PATH/YOUR_FILE.csv' DELIMITER ',';`);
+//
+// psql.query(`COPY photo FROM '/Users/lixu/Desktop/people.csv' DELIMITER ','; `);
+// psql.query(`COPY photo TO 'PATH/YOUR_FILE.csv' DELIMITER ',';`);
