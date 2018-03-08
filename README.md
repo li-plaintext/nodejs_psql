@@ -7,15 +7,15 @@
 <span><img src="https://img.shields.io/npm/v/npm.svg" /><span>
 <span><img src="https://badges.gitter.im/Join%20Chat.svg" /><span>
 
-1. [Startup](#Start_up)
-1. [Simple Query](#Simple_Query)
-1. [Extended Query](#Extended_Query)
-1. [Function Call](#Function_Call)
-1. [COPY Operations](#COPY_Operations)
-1. [Asynchronous Operations](#Asynchronous_Operations)
-1. [Canceling Requests in Progress](#Canceling_Requests_in_Progress)
-1. [Termination](#Termination)
-1. [SSL Session Encryption](#SSL_Session_Encryption)
+  1. [Startup](#Start_up) :heavy_check_mark:
+  1. [Simple Query](#Simple_Query) :white_check_mark:
+  1. [Extended Query](#Extended_Query) :white_check_mark:
+  1. [Function Call](#Function_Call) :x:
+  1. [COPY Operations](#COPY_Operations) :white_check_mark:
+  1. [Asynchronous Operations](#Asynchronous_Operations) :white_check_mark:
+  1. [Canceling Requests in Progress](#Canceling_Requests_in_Progress) :x:
+  1. [Termination](#Termination) :white_check_mark:
+  1. [SSL Session Encryption](#SSL_Session_Encryption) :white_check_mark:
 
 ## Start up
 
@@ -42,7 +42,7 @@ psql.query(`DELETE FROM photo WHERE name='new';`, (res) => res);
 ```
 
 ## Function Call
-> **Note**: using simple query instead
+> **Note**: Currently, using simple query instead, since function call is a legacy feature.
 
 ```sql
 psql.query(`CREATE FUNCTION query_all() RETURNS SETOF photo AS $$ SELECT * FROM photo $$ LANGUAGE SQL;`);
@@ -51,8 +51,7 @@ psql.query(`select query_all()`);
 
 psql.query(`DROP FUNCTION query_all()`);
 ```
-
-## transaction example
+> Transaction example
 
 ```js
 psql.query(`
@@ -71,6 +70,9 @@ psql.extQuery(`SELECT * FROM photo;`, (res) => res);
 
 ## COPY Operations
 
+> Standard input/output
+
+
 ```js
 psql.copyFrom({
   copy: 'photo',
@@ -84,10 +86,19 @@ psql.copyTo({
    copy: 'photo',
    delimiter: ','
 }, (res) => { console.log(res) });
+```
 
+> Non standard input/output
+
+
+```js
 psql.query(`COPY photo FROM 'PATH/YOUR_FILE.csv' DELIMITER ','; `);
 psql.query(`COPY photo TO 'PATH/YOUR_FILE.csv' DELIMITER ',';`);
 ```
+
+## SSL Session Encryption
+It supports any CA that can be recognised by Nodejs `tls` modules.
+Currently `rejectUnauthorized` is set up to `false`, so any self-signed CA works.
 
 ### License
 
