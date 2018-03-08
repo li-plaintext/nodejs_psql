@@ -99,6 +99,7 @@ psql.query(`COPY photo TO 'PATH/YOUR_FILE.csv' DELIMITER ',';`);
 ## SSL Session Encryption
 It supports any CA that can be recognised by Nodejs `tls` modules.
 Currently `rejectUnauthorized` is set up to `false`, so any self-signed CA works.
+In ssl/self-signed-certificate, it roughly gives an idea how to generate a self-signed-certificate by using openssl command line tools.
 
 ## License
 Copyright (c) 2017, Li Xu
