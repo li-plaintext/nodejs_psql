@@ -84,7 +84,8 @@ var Psql = function(config = {}) {
           log(self.CopyOutResponse(buffer));
           break;
         case 'd':
-          log(self.receiveCopyData(buffer));
+          let CopyDataRow = self.receiveCopyData(buffer);
+          this.results.push(CopyDataRow);
           break;
         case 'c':
           self.receiveCopyDone(buffer);
@@ -620,27 +621,23 @@ var Psql = function(config = {}) {
     this.pushToQuereies(resBuffer, callback);
   };
 
-  this.copyTo = function(text) {
-    this.query(text);
+  this.copyTo = function(query, callback) {
+    const copy = query.copy;
+    const delimiter = query.delimiter || ',';
+    const data = query.data instanceof Array? query.data : [];
+    const queryString = `COPY ${copy} TO STDOUT DELIMITER '${delimiter}'`;
+
+    this.query(queryString, callback);
   };
-  this.copyFrom = function(text) {
-    this.query(text);
-    this.sendCopyData([
-      '21',
-      'lixu',
-      'I am near polar bears',
-      'photo-with-bears.jpg',
-      '1',
-      '0'
-    ]);
-    this.sendCopyData([
-      '22',
-      'lixu',
-      'I am near polar bears',
-      'photo-with-bears.jpg',
-      '1',
-      '0'
-    ]);
+  this.copyFrom = function(query) {
+    const copy = query.copy;
+    const data = query.data instanceof Array? query.data : [];
+    const queryString = `COPY ${copy} FROM STDIN`;
+
+    this.query(queryString);
+    while(data.length > 0) this.sendCopyData(data.shift());
+
+
     this.sendCopyDone();
   };
 
@@ -664,8 +661,6 @@ var Psql = function(config = {}) {
       lengthBuffer,
       queryBuffer
     ]);
-
-    log('d', resBuffer);
 
     this.pushToQuereies(resBuffer);
   };
@@ -712,7 +707,6 @@ var Psql = function(config = {}) {
 
     let resBuffer = Buffer.concat([identifierBuffer, lengthBuffer]);
 
-    log('c', resBuffer);
     this.pushToQuereies(resBuffer);
   };
 

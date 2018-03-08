@@ -31,7 +31,20 @@ Psql.connect();
 // Psql.query(`DROP FUNCTION query_all()`);
 
 
-// Psql.extQuery(`SELECT * FROM photo;`, (res) => { console.log(res) });
+Psql.extQuery(`SELECT * FROM photo;`, (res) => { console.log(res) });
 
+// Psql.copyFrom({
+//   copy: 'photo',
+//   data: [
+//     [ '41', 'lixu', 'I am near polar bears', 'photo-with-bears.jpg', '1', '0'],
+//     [ '42', 'lixu', 'I am near bears', 'photo-with-bears', '4', '1'],
+//   ]
+// });
 
-Psql.copyFrom(`copy photo FROM STDIN `);
+// Psql.copyTo({
+//    copy: 'photo',
+//    delimiter: ','
+// }, (res) => { console.log(res) });
+
+// Psql.query(`COPY photo FROM '/Users/lixu/Desktop/people.csv' DELIMITER ','; `);
+// Psql.query(`COPY photo TO 'PATH/YOUR_FILE.csv' DELIMITER ',';`);
