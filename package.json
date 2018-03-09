@@ -1,6 +1,6 @@
 {
   "name": "nodejs_psql",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "*node_psql is built by using pure socket based on [https://www.postgresql.org/docs/8.2/static/protocol-message-formats.html](https://www.postgresql.org/docs/8.2/static/protocol-message-formats.html)*",
   "main": "node_psql.js",
   "scripts": {
