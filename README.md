@@ -17,11 +17,14 @@
   1. [Termination](#Termination) :white_check_mark:
   1. [SSL Session Encryption](#SSL_Session_Encryption) :white_check_mark:
 
+## Installation
 > $ npm install nodejs_psql
 
 ## Start up
 
 ```javascript
+const Psql = require('nodejs_psql');
+
 const psql = new Psql({
   user: 'user',
   database: 'db',
@@ -29,6 +32,8 @@ const psql = new Psql({
   port: 5432,
   ssl: true,
 });
+
+psql.connect();
 ```
 
 ## Simple Query
