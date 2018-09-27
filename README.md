@@ -2,6 +2,7 @@
 *node_psql is built by using pure socket based on [https://www.postgresql.org/docs/8.2/static/protocol-message-formats.html](https://www.postgresql.org/docs/8.2/static/protocol-message-formats.html)*
 
 > **Note**: node_psql is for exploring postgres database purpose
+> **More Information**: https://www.npmjs.com/package/nodejs_psql
 
 <span><img src="https://img.shields.io/travis/USER/REPO.svg"/><span>
 <span><img src="https://img.shields.io/npm/v/npm.svg" /><span>
